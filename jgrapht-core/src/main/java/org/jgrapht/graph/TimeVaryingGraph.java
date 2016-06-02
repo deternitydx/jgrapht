@@ -2,7 +2,9 @@ package org.jgrapht.graph;
 
 import org.jgrapht.EdgeFactory;
 import org.jgrapht.UndirectedGraph;
+import org.jgrapht.util.TimeInterval;
 
+import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -13,22 +15,62 @@ import java.util.Set;
  *
  * Created by jrhott on 5/30/16.
  */
-public class TimeVaryingGraph<V,E>
+public class TimeVaryingGraph<V,E extends AbstractTemporalEdge>
         extends AbstractBaseGraph<V,E>
         implements UndirectedGraph<V,E> {
+
+    private TimeInterval inspectionInterval;
+
+    private AbstractSampling sampling;
 
     protected TimeVaryingGraph(EdgeFactory<V, E> ef, boolean allowMultipleEdges, boolean allowLoops) {
         super(ef, allowMultipleEdges, allowLoops);
     }
 
+    public void setInspectionInterval(TimeInterval t) {
+        this.inspectionInterval = t;
+    }
+
+    public void setSamplingMethod(AbstractSampling sampling) {
+        this.sampling = sampling;
+    }
+
     @Override
     public Set<E> getAllEdges(V sourceVertex, V targetVertex) {
-        return super.getAllEdges(sourceVertex, targetVertex);
+        if (inspectionInterval == null)
+            return super.getAllEdges(sourceVertex, targetVertex);
+        else
+            return getAllExistingEdges(sourceVertex, targetVertex);
+    }
+
+    public Set<E> getAllExistingEdges(V sourceVertex, V targetVertex) {
+
+        HashSet<E> existingEdges = new HashSet<>();
+        for (E edge: super.getAllEdges(sourceVertex, targetVertex)
+             ) {
+            if (sampling.existsIn(edge, inspectionInterval)) {
+                existingEdges.add(edge);
+            }
+        }
+        return existingEdges;
     }
 
     @Override
     public E getEdge(V sourceVertex, V targetVertex) {
-        return super.getEdge(sourceVertex, targetVertex);
+
+        E edge = super.getEdge(sourceVertex, targetVertex);
+
+        if (edge == null)
+            return null;
+
+        if (inspectionInterval == null)
+            return edge;
+        else {
+            if (sampling.existsIn(edge, inspectionInterval))
+                return edge;
+            else
+                return null;
+        }
     }
 
     @Override
